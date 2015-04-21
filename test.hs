@@ -26,13 +26,15 @@ data CellState = Opened Int --Открыта; параметр — циферк�
 
 type Mines = Set Cell
 
+shuffle g l = shuffle' l (fieldWidth * fieldHeight - 1) g
+
 createMines :: RandomGen g => g -> Cell -> Mines
 createMines g fst = Data.Set.fromList $ take mineCount $ shuffle g $
     [(i, j) | i <- [0 .. fieldWidth - 1]
             , j <- [0 .. fieldHeight - 1]
             , (i, j) /= fst]
 
-shuffle g l = shuffle' l (fieldWidth * fieldHeight - 1) g
+
 
 data GameState = GS
     { field    :: Field

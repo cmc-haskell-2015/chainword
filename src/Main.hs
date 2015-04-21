@@ -34,17 +34,26 @@ parseInput s
 answList= (parseInput (fileToStr answPath))
 questList= (parseInput (fileToStr questPath))
 
-main = do 
+mainloop k = do 
     --print (parseInput (fileToStr answPath))
-    print "type number->"
-    n <- getLine
-    print (questList !! read n)
-    print (show (length (answList !! read n))++ "  letters")
-    print "type answer->"
-    an <- getLine
-    print ((answList !! read n)== an)
+    if (k== (length answList))
+        then do
+            putStrLn "this is it!"
+        else do
+            print "type number->"
+            n <- getLine
+            putStrLn (questList !! read n)
+            print (show (length (answList !! read n))++ "  letters")
+            print "type answer->"
+            an <- getLine
+            print ((answList !! read n)== an)
+            if ((answList !! read n)== an)
+                then mainloop (k+1)
+                else mainloop k
 
 
+
+main = mainloop 0
 
 
 
