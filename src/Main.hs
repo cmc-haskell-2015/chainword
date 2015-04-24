@@ -10,8 +10,8 @@ import System.IO.Unsafe
 
 
 
-answPath= "answers.txt"
-questPath= "questions.txt"
+answPath= "Ответы.txt"
+questPath= "Вопросы.txt"
 
 fileToStr:: String -> String
 fileToStr s  = unsafePerformIO (hGetContents (unsafePerformIO (openFile s ReadMode)))
