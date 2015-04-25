@@ -47,12 +47,15 @@ allprint xs n= do
 --строим gui
 
 --состояние поля- это массив из введенных букв
-type World= [Maybe Char]
+data World= World {
+    xs::[Maybe Char], --список введенных букв
+    flag::Bool -- флаг нажатия мыши, если он тру то ожидаем символ
+}
     
 
 --Начальное состояние поля
 initial:: World
-initial= replicate (fieldDim^2) Nothing
+initial= World (  [Just 'a'] ++ [Just 'b'] ++ replicate (fieldDim^2-2) Nothing ) False
 
 -- индексы в квких клетках должны стоять номера ответов
 getIndex:: [String]-> Int-> [Maybe Int]
@@ -64,11 +67,11 @@ indexes= getIndex answList 1
 
 --функция отрисовки, преобразует world в Picture- встроенный тип gloss, который им отрисовывается
 render:: World-> Picture
-render xs= grid<>numbers<>words
+render (World xs _)= grid<>numbers<>words
     where 
         grid= makeLines fieldDim<> makePath
         numbers= mconcat [translate (fst $ cellPos n) (snd $ cellPos n) $ scale 0.1 0.1 $ Text $ show k | n<- [0..length indexes -1], Just k<- [indexes!!n] ]
-        words= mconcat [ translate (fst $ cellCenter n) (snd $ cellCenter n) $ scale 0.2 0.2 $ Text $ show ch | n<- [0..length xs -1], Just ch<- [xs!!n]]
+        words= mconcat [ translate (fst $ cellCenter n) (snd $ cellCenter n) $ scale 0.2 0.2 $ Text $ [ch] | n<- [0..length xs -1], Just ch<- [xs!!n]]
 
 
 --добавляем к рисунку разлиновку на клетки
@@ -116,7 +119,9 @@ cellCenter n= (x+ l,y+l)
 
 --обработчик события 
 --дописать
+--по сути нужно просто изменять массив в world , занести туда букву в позицию соответствующую номеру нажатой клетки
 handler:: Event-> World-> World
+--handler (EventKey (MouseButton LeftButton) Up _ (x, y))
 handler _= id
 
 
