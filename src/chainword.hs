@@ -55,9 +55,9 @@ data World= World {
 
 --Начальное состояние поля
 initial:: World
-initial= World (  [Just 'a'] ++ [Just 'b'] ++ replicate (fieldDim^2-2) Nothing ) False
+initial= World (replicate (fieldDim^2) Nothing ) False
 
--- индексы в квких клетках должны стоять номера ответов
+-- индексы в каких клетках должны стоять номера ответов
 getIndex:: [String]-> Int-> [Maybe Int]
 getIndex [] _ = []
 getIndex xs n = [Just n] <> (replicate (length (head xs) - 2) Nothing ) <> getIndex (tail xs)  (n+1)
@@ -70,7 +70,7 @@ render:: World-> Picture
 render (World xs _)= grid<>numbers<>words
     where 
         grid= makeLines fieldDim<> makePath
-        numbers= mconcat [translate (fst $ cellPos n) (snd $ cellPos n) $ scale 0.1 0.1 $ Text $ show k | n<- [0..length indexes -1], Just k<- [indexes!!n] ]
+        numbers= mconcat [translate (fst $ cellPos n) (snd $ cellPos n + 2) $ scale 0.1 0.1 $ Text $ show k | n<- [0..length indexes -1], Just k<- [indexes!!n] ]
         words= mconcat [ translate (fst $ cellCenter n) (snd $ cellCenter n) $ scale 0.2 0.2 $ Text $ [ch] | n<- [0..length xs -1], Just ch<- [xs!!n]]
 
 
@@ -78,18 +78,18 @@ render (World xs _)= grid<>numbers<>words
 makeLines:: Int-> Picture
 makeLines n 
         |n<0 = Blank
-        |otherwise= (color black (line [ (linePos 0, linePos n), (linePos fieldDim,linePos n)]))<>
-                    (color black (line [ (linePos n,linePos 0), (linePos n,linePos fieldDim)]))<> (makeLines (n-1))
+        |otherwise= (color (makeColor 0.5 0.5 0.5 0.3) (line [ (linePos 0, linePos n), (linePos fieldDim,linePos n)]))<>
+                    (color (makeColor 0.5 0.5 0.5 0.3) (line [ (linePos n,linePos 0), (linePos n,linePos fieldDim)]))<> (makeLines (n-1))
 
 
 
 
 -- добавляем к картинке рисунок змейки чайнворда
 makePath:: Picture
-makePath= mconcat [ color red (line [(linePos 0, linePos n), (linePos (fieldDim-1), linePos n)] ) | n<- [1,3..fieldDim-1] ]<>
-            mconcat [color red (line [(linePos 1, linePos n), (linePos fieldDim, linePos n)]) | n<- [2,4..fieldDim-2]]<>
-            mconcat [color red (line [(linePos 0, linePos n), (linePos fieldDim, linePos n)] ) | n<- [0,fieldDim]]<>
-            mconcat [color red (line [(linePos n,linePos 0), (linePos n,linePos fieldDim)]) | n<- [0,fieldDim]]
+makePath= mconcat [color black (line [(linePos 0, linePos n), (linePos (fieldDim-1), linePos n)] ) | n<- [1,3..fieldDim-1] ]<>
+            mconcat [color black (line [(linePos 1, linePos n), (linePos fieldDim, linePos n)]) | n<- [2,4..fieldDim-2]]<>
+            mconcat [color black (line [(linePos 0, linePos n), (linePos fieldDim, linePos n)] ) | n<- [0,fieldDim]]<>
+            mconcat [color black (line [(linePos n,linePos 0), (linePos n,linePos fieldDim)]) | n<- [0,fieldDim]]
 
 
 
@@ -120,16 +120,30 @@ cellCenter n= (x+ l,y+l)
 --обработчик события 
 --дописать
 --по сути нужно просто изменять массив в world , занести туда букву в позицию соответствующую номеру нажатой клетки
-handler:: Event-> World-> World
---handler (EventKey (MouseButton LeftButton) Up _ (x, y))
-handler _= id
+handler:: Event->World->World
+handler (EventKey (MouseButton LeftButton) Down _ (x, y)) (World xs _) = World (ins xs (Just (unsafePerformIO getChar)) (findCell (x, y) 0)) False
+handler _ (World xs _) = (World xs True)
 
+--вставка элемента в список в нужную позицию
+ins::[Maybe Char]->Maybe Char->Int->[Maybe Char]
+ins (x:xs) c 0 = (c:xs)
+ins (x:xs) c n = (x:(ins xs c (n-1)))
 
+--поиск номера клетки по координатам
+findCell:: (Float, Float)->Int->Int
+findCell (x, y) n = 
+    if (x <= a) && (y <= b) && (x >= c) && (y >= d)
+        then n
+        else findCell (x, y) (n + 1)
+    where
+        a= (fst $ cellPos n) + (fromIntegral cellsize)
+        b= (snd $ cellPos n) + (fromIntegral cellsize)
+        c= fst $ cellPos n
+        d= snd $ cellPos n
 
 --функция вызываемая 30 раз в секунду, в нашем случае тождественная
 updater:: Float-> World->World
 updater _= id
-
 
 
 --вызов главной функции 
