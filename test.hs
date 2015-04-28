@@ -107,7 +107,7 @@ renderer GS { field = field } = applyViewPortToPicture viewPort $ pictures $ cel
     cells = [uncurry translate (cellToScreen (x, y)) $ drawCell x y | x <- [0 .. fieldWidth - 1], y <- [0 .. fieldHeight - 1]]
     drawCell x y = case Data.Map.lookup (x, y) field of
         Nothing         -> color white $ rectangleSolid cellSize cellSize --клетка пустая
-        Just Mine       -> pictures [ color red $ rectangleSolid cellSize cellSize
+        Just Mine       -> pictures [ color red $ rectangleSolid cellSize cellSize  
                                     , label "@"
                                     ]
         Just (Opened n) -> pictures [ color green $ rectangleSolid cellSize cellSize

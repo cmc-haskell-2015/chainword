@@ -49,13 +49,13 @@ allprint xs n= do
 --состояние поля- это массив из введенных букв
 data World= World {
     xs::[Maybe Char], --список введенных букв
-    flag::Bool -- флаг нажатия мыши, если он тру то ожидаем символ
+    cur_field::Maybe Int -- номер поля если произошло нажатие
 }
     
 
 --Начальное состояние поля
 initial:: World
-initial= World (replicate (fieldDim^2) Nothing ) False
+initial= World (replicate (fieldDim^2) Nothing ) Nothing
 
 -- индексы в каких клетках должны стоять номера ответов
 getIndex:: [String]-> Int-> [Maybe Int]
@@ -121,25 +121,33 @@ cellCenter n= (x+ l,y+l)
 --дописать
 --по сути нужно просто изменять массив в world , занести туда букву в позицию соответствующую номеру нажатой клетки
 handler:: Event->World->World
-handler (EventKey (MouseButton LeftButton) Down _ (x, y)) (World xs _) = World (ins xs (Just (unsafePerformIO getChar)) (findCell (x, y) 0)) False
-handler _ (World xs _) = (World xs True)
+handler (EventKey (MouseButton LeftButton) Up _ (x, y)) (World xs _) = World  xs (findCell (x, y) 0)
+handler (EventKey (Char c) Up _ _) (World xs (Just n) ) = World (ins xs  (Just c) $ Just n) Nothing
+handler _ (World xs f) = (World xs f)
+
+
+
+
 
 --вставка элемента в список в нужную позицию
-ins::[Maybe Char]->Maybe Char->Int->[Maybe Char]
-ins (x:xs) c 0 = (c:xs)
-ins (x:xs) c n = (x:(ins xs c (n-1)))
+ins::[Maybe Char]->Maybe Char-> Maybe Int->[Maybe Char]
+ins xs _ Nothing = xs
+ins (x:xs)  c  (Just 0) = (c:xs)
+ins (x:xs)  c  (Just n) = (x:(ins xs c $ Just (n-1)))
 
 --поиск номера клетки по координатам
-findCell:: (Float, Float)->Int->Int
-findCell (x, y) n = 
-    if (x <= a) && (y <= b) && (x >= c) && (y >= d)
-        then n
-        else findCell (x, y) (n + 1)
-    where
-        a= (fst $ cellPos n) + (fromIntegral cellsize)
-        b= (snd $ cellPos n) + (fromIntegral cellsize)
-        c= fst $ cellPos n
-        d= snd $ cellPos n
+findCell:: (Float, Float)->Int-> Maybe Int
+findCell (x, y) n 
+				|n> fieldDim^2-1 = Nothing  
+				|otherwise = 
+    				if (x <= a) && (y <= b) && (x >= c) && (y >= d)
+        				then Just n
+        			else findCell (x, y) (n + 1)
+    			where
+        			a= (fst $ cellPos n) + (fromIntegral cellsize)
+        			b= (snd $ cellPos n) + (fromIntegral cellsize)
+        			c= fst $ cellPos n
+        			d= snd $ cellPos n
 
 --функция вызываемая 30 раз в секунду, в нашем случае тождественная
 updater:: Float-> World->World
