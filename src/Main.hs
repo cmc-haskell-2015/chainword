@@ -1,24 +1,22 @@
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+
+import Control.Applicative
+
 import Graphics.Gloss
 --import Graphics.Gloss.Data.ViewPort
 import Graphics.Gloss.Interface.Pure.Game
 import System.IO
-import System.IO.Unsafe
 import Data.Monoid
 
 
 
 -- константы
-answPath= "Ответы.txt"
-questPath= "Вопросы.txt"
+answPath= "examples/Ответы.txt"
+questPath= "examples/Вопросы.txt"
 fieldDim= 10:: Int
 winsize= 500:: Int
 cellsize= div winsize fieldDim
-
---загружаем вопросы и ответы в списки строк
-fileToStr:: String -> String
-fileToStr s  = unsafePerformIO (hGetContents (unsafePerformIO (openFile s ReadMode)))
 
 find:: (Eq a) => [a] -> a -> Int
 find xs e 
@@ -35,9 +33,6 @@ parseInput s
     | null s = [] 
     | otherwise= (take (find s '\n') s): (parseInput (drop ((find s '\n')+1) s))
 
-answList= (parseInput (fileToStr answPath))
-questList= (parseInput (fileToStr questPath))
-
 allprint:: [String]-> Int-> IO()
 allprint [] _ = return ()
 allprint xs n= do
@@ -49,29 +44,29 @@ allprint xs n= do
 --состояние поля- это массив из введенных букв
 data World= World {
     xs::[Maybe Char], --список введенных букв
-    cur_field::Maybe Int -- номер поля если произошло нажатие
+    cur_field::Maybe Int, -- номер поля если произошло нажатие
+    answers :: [String]
 }
     
 
 --Начальное состояние поля
-initial:: World
-initial= World (replicate (fieldDim^2) Nothing ) Nothing
-
--- индексы в каких клетках должны стоять номера ответов
-getIndex:: [String]-> Int-> [Maybe Int]
-getIndex [] _ = []
-getIndex xs n = [Just n] <> (replicate (length (head xs) - 2) Nothing ) <> getIndex (tail xs)  (n+1)
-
-indexes= getIndex answList 1
-
+initial :: [String] -> World
+initial = World (replicate (fieldDim^2) Nothing ) Nothing
 
 --функция отрисовки, преобразует world в Picture- встроенный тип gloss, который им отрисовывается
 render:: World-> Picture
-render (World xs _)= grid<>numbers<>words
+render (World xs _ answList)= grid<>numbers<>words
     where 
         grid= makeLines fieldDim<> makePath
         numbers= mconcat [translate (fst $ cellPos n) (snd $ cellPos n + 2) $ scale 0.1 0.1 $ Text $ show k | n<- [0..length indexes -1], Just k<- [indexes!!n] ]
         words= mconcat [ translate (fst $ cellCenter n) (snd $ cellCenter n) $ scale 0.2 0.2 $ Text $ [ch] | n<- [0..length xs -1], Just ch<- [xs!!n]]
+
+        -- индексы в каких клетках должны стоять номера ответов
+        getIndex:: [String]-> Int-> [Maybe Int]
+        getIndex [] _ = []
+        getIndex xs n = [Just n] <> (replicate (length (head xs) - 2) Nothing ) <> getIndex (tail xs)  (n+1)
+
+        indexes= getIndex answList 1
 
 
 --добавляем к рисунку разлиновку на клетки
@@ -121,9 +116,9 @@ cellCenter n= (x+ l,y+l)
 --дописать
 --по сути нужно просто изменять массив в world , занести туда букву в позицию соответствующую номеру нажатой клетки
 handler:: Event->World->World
-handler (EventKey (MouseButton LeftButton) Up _ (x, y)) (World xs _) = World  xs (findCell (x, y) 0)
-handler (EventKey (Char c) Up _ _) (World xs (Just n) ) = World (ins xs  (Just c) $ Just n) Nothing
-handler _ (World xs f) = (World xs f)
+handler (EventKey (MouseButton LeftButton) Up _ (x, y)) (World xs _ as) = World  xs (findCell (x, y) 0) as
+handler (EventKey (Char c) Up _ _) (World xs (Just n) as) = World (ins xs  (Just c) $ Just n) Nothing as
+handler _ w = w
 
 
 
@@ -155,13 +150,15 @@ updater _= id
 
 
 --вызов главной функции 
-startplay=  
-    play (InWindow "chainword" (winsize,winsize) (500, 500)) white 30 initial render handler updater
+startplay answList=  
+    play (InWindow "chainword" (winsize,winsize) (500, 500)) white 30 (initial answList) render handler updater
 
 main = do
    -- putStrLn "Список вопросов"
+   questList <- parseInput <$> readFile questPath
+   answList  <- parseInput <$> readFile answPath
    allprint questList 1
-   startplay
+   startplay answList
 	
 
 
