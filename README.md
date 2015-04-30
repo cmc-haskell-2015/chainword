@@ -7,6 +7,7 @@
 ## Установка
 
 Для установки клонируйте репозиторий и запустите `cabal install`:
+Запуск- cabal run из корневой папки репозитория
 
 ```
 $ git clone https://github.com/cmc-haskell-2015/chainword.git

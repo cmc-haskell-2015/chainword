@@ -6,7 +6,7 @@ version:             0.1
 synopsis:            Головоломка чайнворд.
 -- description:         
 homepage:            https://github.com/cmc-haskell-2015/chainword
--- license:             
+-- license:          
 license-file:        LICENSE
 -- author:              
 -- maintainer:          
