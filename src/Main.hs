@@ -17,6 +17,7 @@ questPath= "examples/Вопросы.txt"
 fieldDim= 10:: Int
 winsize= 500:: Int
 cellsize= div winsize fieldDim
+maxTime= 1.0*60
 
 find:: (Eq a) => [a] -> a -> Int
 find xs e 
@@ -41,33 +42,36 @@ allprint xs n= do
 
 --строим gui
 
+
 --состояние поля- это массив из введенных букв
 data World= World {
     xs::[Maybe Char], --список введенных букв
     cur_field::Maybe Int, -- номер поля если произошло нажатие
-    answers :: [String]
-}
+    colours::[Color],   -- цвета букв
+    answers::[String],   -- ответы на вопросы
+    time::Float        --время отгадывания
+}    
     
 
 --Начальное состояние поля
 initial :: [String] -> World
-initial = World (replicate (fieldDim^2) Nothing ) Nothing
+initial as = World (replicate (fieldDim^2) Nothing ) Nothing (replicate (fieldDim^2) black) as 0.0
 
 --функция отрисовки, преобразует world в Picture- встроенный тип gloss, который им отрисовывается
 render:: World-> Picture
-render (World xs _ answList)= grid<>numbers<>words
+render (World xs _ colours answList tm)
+    |tm > maxTime = scale 0.15 0.15 $ color red $ Text "YOUR TIME IS UP!!!"
+    |otherwise = grid<>numbers<>words
     where 
         grid= makeLines fieldDim<> makePath
         numbers= mconcat [translate (fst $ cellPos n) (snd $ cellPos n + 2) $ scale 0.1 0.1 $ Text $ show k | n<- [0..length indexes -1], Just k<- [indexes!!n] ]
-        words= mconcat [ translate (fst $ cellCenter n) (snd $ cellCenter n) $ scale 0.2 0.2 $ Text $ [ch] | n<- [0..length xs -1], Just ch<- [xs!!n]]
-
-        -- индексы в каких клетках должны стоять номера ответов
-        getIndex:: [String]-> Int-> [Maybe Int]
-        getIndex [] _ = []
-        getIndex xs n = [Just n] <> (replicate (length (head xs) - 2) Nothing ) <> getIndex (tail xs)  (n+1)
-
+        words= mconcat [color col $ translate (fst $ cellCenter n) (snd $ cellCenter n) $ scale 0.2 0.2 $ Text $ [ch] | n<- [0..length xs -1], Just ch<- [xs!!n], col<- [colours!!n]]
         indexes= getIndex answList 1
 
+-- индексы в каких клетках должны стоять номера ответов
+getIndex:: [String]-> Int-> [Maybe Int]
+getIndex [] _ = []
+getIndex xs n = [Just n] <> (replicate (length (head xs) - 2) Nothing ) <> getIndex (tail xs)  (n+1)
 
 --добавляем к рисунку разлиновку на клетки
 makeLines:: Int-> Picture
@@ -116,8 +120,18 @@ cellCenter n= (x+ l,y+l)
 --дописать
 --по сути нужно просто изменять массив в world , занести туда букву в позицию соответствующую номеру нажатой клетки
 handler:: Event->World->World
-handler (EventKey (MouseButton LeftButton) Up _ (x, y)) (World xs _ as) = World  xs (findCell (x, y) 0) as
-handler (EventKey (Char c) Up _ _) (World xs (Just n) as) = World (ins xs  (Just c) $ Just n) Nothing as
+handler (EventKey (MouseButton LeftButton) Up _ (x, y)) (World xs _ col as tm) = World  xs (findCell (x, y) 0) col as tm
+handler (EventKey (Char key) Up _ _) (World xs (Just n) col as tm)
+                                                        |n> fieldDim^2-1 = World newXs (Just n) (chCols as newXs 0 blacks) as tm
+                                                        |otherwise = World newXs (Just $ n+1) (chCols as newXs 0 blacks) as tm
+                                                        where
+                                                            blacks= replicate (fieldDim^2) black
+                                                            newXs| n> fieldDim^2 - 1 = ins xs  (Just ch) $ Just (fieldDim^2 -1)
+                                                                 |otherwise = (ins xs  (Just ch) $ Just n)
+                                                            ch|(key== '0') && (n< length ansLine) = ansLine!!n
+                                                              |(key=='0') && (n>= length ansLine)= ' '
+                                                              |otherwise = key
+                                                            ansLine= as!!0 <> mconcat [  tail w |w<- tail as]
 handler _ w = w
 
 
@@ -125,10 +139,16 @@ handler _ w = w
 
 
 --вставка элемента в список в нужную позицию
-ins::[Maybe Char]->Maybe Char-> Maybe Int->[Maybe Char]
+ins::[a]->a-> Maybe Int->[a]
 ins xs _ Nothing = xs
 ins (x:xs)  c  (Just 0) = (c:xs)
 ins (x:xs)  c  (Just n) = (x:(ins xs c $ Just (n-1)))
+
+--вставка в список одинаковых элементов от n до m позиции
+insMany:: [a]->a->Int->Int->[a]
+insMany xs x n m
+    |n > m = xs
+    |otherwise= insMany (ins xs x $ Just n) x (n+1) m
 
 --поиск номера клетки по координатам
 findCell:: (Float, Float)->Int-> Maybe Int
@@ -146,7 +166,35 @@ findCell (x, y) n
 
 --функция вызываемая 30 раз в секунду, в нашем случае тождественная
 updater:: Float-> World->World
-updater _= id
+updater _ (World tp cur cl as tm) = (World tp cur cl as (tm + (1/30)))
+
+
+--пробегает список ответов, сравнивает с введенным и заполняет массив цветов зеленым в местах правильного ответа
+chCols:: [String]-> [Maybe Char]-> Int-> [Color] -> [Color]
+chCols as tp n cl 
+    |n== (length as) = cl
+    |check n as tp = chCols as tp (n+1) $ insMany cl green n1 n2 
+    |otherwise= chCols as tp (n+1) cl 
+    where
+        s= as!!n
+        l| n==0 = 0
+         | n==1 = length $ head as 
+         |otherwise= length $ mconcat [as!!k | k<- [0,1..n-1]]
+        n1= l-n
+        n2= l-n+ (length s) -1
+
+
+--функция проверяющая наличие строки из ansqlist в текущей введенной строке world
+check:: Int-> [String]-> [Maybe Char]-> Bool
+check n as tp= (ans==typ)
+                    where
+                        s= as!!n
+                        ans= map (\x-> Just x) s
+                        l| n==0 = 0
+                         | n==1 = length $ head as 
+                         |otherwise= length $ mconcat [as!!k | k<- [0,1..n-1]]
+                        typ= take (length s) (drop (l-n) tp)
+
 
 
 --вызов главной функции 
