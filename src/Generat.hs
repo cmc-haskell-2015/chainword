@@ -3,8 +3,8 @@ module Generat where
 import System.Random
 import System.Random.Shuffle (shuffle')
 
---генерирует нужный кортедж из 2 списков- с вопросами и с ответами 
---берем полный список вопросов и ответов, преобразуем его в список кортеджей (вопрос,ответ)
+--генерирует нужный кортеж из 2 списков- с вопросами и с ответами 
+--берем полный список вопросов и ответов, преобразуем его в список кортежей (вопрос,ответ)
 --перемешиваем и составляем цепочку
 generate:: RandomGen g => ([String],[String]) -> g -> Int -> ([String],[String])
 generate tp g n = convBack $ makeList (tail ql) [head ql] n
@@ -24,7 +24,7 @@ makeList al rs n | new == ([],[]) = rs
                     l= n - (length (concat $ map snd rs) - (length rs) +1 ) +1  --макс длинна нового слова
 
 
--- удоляем из списка заданный элемент
+-- удаляем из списка заданный элемент
 delElem:: Eq a => [a] -> a -> [a]
 delElem [] _ = []
 delElem xs a | head xs == a = tail xs
@@ -39,7 +39,7 @@ getNext xs c n | null xs = ([],[])
                     ans= snd $ head xs
 
 
--- конвертирует кортедж из 2 списков в список бинарных кортеджей. 
+-- конвертирует кортеж из 2 списков в список бинарных кортежей. 
 convert:: ([a],[a]) -> [(a,a)]
 convert ([],[])  = []
 convert (xs,ys) = [(head xs,head ys)]++ convert (tail xs,tail ys)
