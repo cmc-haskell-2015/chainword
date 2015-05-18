@@ -1,3 +1,5 @@
+module Main where
+
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -8,16 +10,20 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import System.IO
 import Data.Monoid
-
+import System.Random
+import System.Random.Shuffle (shuffle')
+import Generat
 
 
 -- константы
-answPath= "examples/Ответы.txt"
-questPath= "examples/Вопросы.txt"
+simpAnswPath= "examples/answ_transl_simp.txt"
+simpQuestPath= "examples/questions_simp.txt"
+hardAnswPath= "examples/answ_transl_hard.txt"
+hardQuestPath= "examples/questions_hard.txt"
 fieldDim= 10:: Int
 winsize= 500:: Int
 cellsize= div winsize fieldDim
-maxTime= 1.0*60
+maxTime= 10.0*60
 
 find:: (Eq a) => [a] -> a -> Int
 find xs e 
@@ -201,13 +207,21 @@ check n as tp= (ans==typ)
 startplay answList=  
     play (InWindow "chainword" (winsize,winsize) (500, 500)) white 30 (initial answList) render handler updater
 
-main = do
-   -- putStrLn "Список вопросов"
-   questList <- parseInput <$> readFile questPath
-   answList  <- parseInput <$> readFile answPath
-   allprint questList 1
-   startplay answList
+getPath:: String -> (String,String)
+getPath "2" = (simpQuestPath,simpAnswPath)
+getPath "1" = (hardQuestPath,hardAnswPath)
 	
+main = do
+   putStrLn "put 1 for hard questions 2 for simple"
+   s<- getLine
+   
+   g<- getStdGen
+   allQuestList <- parseInput <$> readFile (fst (getPath s))
+   allAnswList  <- parseInput <$> readFile (snd (getPath s))
+
+   allprint (fst $ generate (allQuestList,allAnswList) g $ fieldDim^2) 1
+   startplay (snd $ generate (allQuestList,allAnswList) g $ fieldDim^2)
+
 
 
 
