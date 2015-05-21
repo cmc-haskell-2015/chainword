@@ -17,6 +17,7 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
+  ghc-options:         -Wall
   exposed-modules:
     Generat
     Interface
@@ -29,6 +30,7 @@ library
   default-language:    Haskell2010
 
 executable chainword
+  ghc-options:         -Wall
   main-is:             Main.hs
   -- other-modules:    Generat.hs    
   -- other-extensions:    
