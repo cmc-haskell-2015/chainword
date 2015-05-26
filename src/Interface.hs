@@ -17,33 +17,33 @@ import Generat
 
 -- * Константы
 
--- | ???
+-- | Путь к простым вариантам ответов
 simpAnswPath= "examples/answ_transl_simp.txt"
 
--- | ???
+-- | Путь к простым вариантам вопросов
 simpQuestPath= "examples/questions_simp.txt"
 
--- | ???
+-- | Путь к сложным вариантам ответов
 hardAnswPath= "examples/answ_transl_hard.txt"
 
--- | ???
+-- | Путь к слодным вариантам вопросов
 hardQuestPath= "examples/questions_hard.txt"
 
--- | ???
+-- | Размерность поля
 fieldDim= 10:: Int
 
--- | ???
+-- | Размер окна
 winsize= 500:: Int
 
--- | ???
+-- | Размер клетки
 cellsize= div winsize fieldDim
 
--- | ???
+-- | Максимальное время ответа на всю головоломку
 maxTime= 10.0*60
 
 -- * Вспомогательные функции
 
--- | ???
+-- | Ищет в списке элемент и возвращает его номер в списке
 find:: (Eq a) => [a] -> a -> Int
 find xs e 
     | elem e xs = ffind xs e 
@@ -54,13 +54,13 @@ find xs e
                 | otherwise     = 1 + ffind xs e
 
 
--- | ???
+-- | Вместо строки из вопросов/ответов получаем список из них
 parseInput:: String -> [String]
 parseInput s
     | null s = [] 
     | otherwise= (take (find s '\n') s): (parseInput (drop ((find s '\n')+1) s))
 
--- | ???
+-- | Печать всего списка строк
 allprint:: [String]-> Int-> IO()
 allprint [] _ = return ()
 allprint xs n= do
@@ -87,13 +87,23 @@ initial as = World (replicate (fieldDim^2) Nothing ) Nothing (replicate (fieldDi
 render:: World-> Picture
 render (World xs _ colours answList tm)
     |tm > maxTime = scale 0.15 0.15 $ color red $ Text "YOUR TIME IS UP!!!"
-    |otherwise = grid<>numbers<>words
+    |otherwise = grid<>numbers<>words<>emptyCells
     where 
-        grid= makeLines fieldDim<> makePath
-        numbers= mconcat [translate (fst $ cellPos n) (snd $ cellPos n + 2) $ scale 0.1 0.1 $ Text $ show k | n<- [0..length indexes -1], Just k<- [indexes!!n] ]
-        words= mconcat [color col $ translate (fst $ cellCenter n) (snd $ cellCenter n) $ scale 0.2 0.2 $ Text $ [ch] | n<- [0..length xs -1], Just ch<- [xs!!n], col<- [colours!!n]]
-        indexes= getIndex answList 1
+        grid = makeLines fieldDim<> makePath
+        numbers = mconcat [translate (fst $ cellPos n) (snd $ cellPos n + 2) $ scale 0.1 0.1 $ Text $ show k | n<- [0..length indexes -1], Just k<- [indexes!!n] ]
+        words = mconcat [color col $ translate (fst $ cellCenter n) (snd $ cellCenter n) $ scale 0.2 0.2 $ Text $ [ch] | n<- [0..length xs -1], Just ch<- [xs!!n], col<- [colours!!n]]
+        indexes = getIndex answList 1
+        emptyCells = mconcat [fillCell n |n<- emptyList]
+        emptyList = [ ((length $ concat answList) - length answList + 1) .. fieldDim^2]
 
+-- | Закрашивает клетку черным по номеру
+fillCell:: Int -> Picture
+fillCell n = translate (fst cord) (snd cord) $ color black $ rectangleSolid size size
+    where
+	   size = fromIntegral cellsize
+	   cord = cellCenter n 
+
+		
 -- | Индексы в каких клетках должны стоять номера ответов.
 getIndex:: [String]-> Int-> [Maybe Int]
 getIndex [] _ = []
@@ -191,7 +201,7 @@ findCell (x, y) n
         			c= fst $ cellPos n
         			d= snd $ cellPos n
 
--- | Функция вызываемая 30 раз в секунду, в нашем случае тождественная.
+-- | Функция вызываемая 30 раз в секунду, в нашем случае она отсчитывает время.
 updater:: Float-> World->World
 updater _ (World tp cur cl as tm) = (World tp cur cl as (tm + (1/30)))
 
@@ -228,12 +238,12 @@ check n as tp= (ans==typ)
 startplay answList=  
     play (InWindow "chainword" (winsize,winsize) (500, 500)) white 30 (initial answList) render handler updater
 
--- | ???
+-- | По номеру возвращает пути для легких/сложных вопросов
 getPath:: String -> (String,String)
 getPath "2" = (simpQuestPath,simpAnswPath)
 getPath "1" = (hardQuestPath,hardAnswPath)
 
--- | ???
+-- | Самая главная функция
 start :: IO ()
 start = do
    putStrLn "put 1 for hard questions 2 for simple"
